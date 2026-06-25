@@ -1,55 +1,76 @@
-# GitHub Pages Deployment Walkthrough
+# GitHub Pages Deployment Walkthrough (GitHub Actions)
 
-We have successfully configured the React + Vite project for deployment to GitHub Pages at the target URL: `https://swatantra2006.github.io/techfest-3d/`.
+We have successfully migrated the deployment process from the `gh-pages` CLI tool to **GitHub Actions**. This avoids local build errors on Windows (like `ENAMETOOLONG`) and runs the entire build and deploy pipeline in GitHub's secure cloud environment.
 
-## Changes Made
-
-### 1. Vite Configuration
-- **File**: [vite.config.js](file:///c:/Users/dell/Desktop/Task-2/vite.config.js)
-- **Change**: Added `base: '/techfest-3d/'` to ensure that all assets (JS, CSS, images) are loaded with the correct subdirectory prefix, matching the repository name.
-
-### 2. Package Configuration
-- **File**: [package.json](file:///c:/Users/dell/Desktop/Task-2/package.json)
-- **Changes**:
-  - Added the `"homepage"` field pointing to the production deployment URL.
-  - Added the `"predeploy"` script to run `npm run build` automatically before deploying.
-  - Added the `"deploy"` script using the `gh-pages` package to push the build output directory (`dist`) to the `gh-pages` branch.
-  - Added `"gh-pages": "^6.1.1"` to `"devDependencies"`.
+## Why the White Page Occurred
+In your previous deployment attempt, the raw source code files (including `src/main.jsx` and `index.html`) were pushed directly to the hosting branch without being compiled.
+* A browser cannot run raw JSX files (`/src/main.jsx`) directly.
+* GitHub Pages is a static file server and does not run a dev server (like Vite) to compile files on the fly.
+* Under GitHub Actions, Vite builds your app into static assets (compiled HTML, CSS, and JS) inside a `dist/` directory, which GitHub Pages then serves correctly.
 
 ---
 
-## Deployment Steps
+## Correct Folder Structure
 
-Because terminal command execution is restricted in the sandbox environment due to path access limits, you must run the deployment commands manually from your terminal inside the project directory (`c:\Users\dell\Desktop\Task-2`):
+Your repository must have the following layout for GitHub Actions to discover the workflow:
 
-### Step 1: Install Dependencies
-Run the following command to install the added `gh-pages` dependency:
-```bash
-npm install
+```text
+c:\Users\dell\Desktop\Task-2\
+├── .github/
+│   └── workflows/
+│       └── deploy.yml      <-- Correct Workflow File
+├── src/
+├── public/
+├── index.html
+├── package.json
+├── vite.config.js
+├── .gitignore             <-- Critical: Ignores node_modules & dist
+└── ...
 ```
-*(Alternatively, you can run `npm install gh-pages --save-dev`)*
-
-### Step 2: Deploy to GitHub Pages
-Run the deployment script:
-```bash
-npm run deploy
-```
-This command will:
-1. Trigger `predeploy` which runs `vite build` to generate the production-ready assets in the `dist/` directory.
-2. Trigger `deploy` which uploads the contents of the `dist/` directory to a branch named `gh-pages` in your GitHub repository.
 
 ---
 
-## Enabling GitHub Pages in GitHub Settings
+## Step-by-Step Recovery & Deployment Instructions
 
-After running `npm run deploy` successfully, you need to verify or configure the settings in GitHub:
+### 1. Remove Tracked/Staged Build Artifacts & Caches
+Run the following PowerShell commands in your project root (`c:\Users\dell\Desktop\Task-2`) to clear the Git index of untracked dependencies, clean the accidental directory, and stage the correct files:
 
-1. Open your GitHub Repository: [https://github.com/Swatantra2006/techfest-3d](https://github.com/Swatantra2006/techfest-3d)
-2. Go to **Settings** (tab at the top).
-3. Scroll down the left sidebar and click on **Pages**.
-4. Under the **Build and deployment** section:
-   - **Source**: Select **Deploy from a branch**.
-   - **Branch**: Select **`gh-pages`** and the directory **`/ (root)`**.
-5. Click **Save**.
-6. Wait a minute or two, and GitHub will deploy your site to the final URL:
-   [https://swatantra2006.github.io/techfest-3d/](https://swatantra2006.github.io/techfest-3d/)
+```powershell
+# Step A: Remove tracked node_modules and dist from Git cache (if tracked)
+git rm -r --cached node_modules
+git rm -r --cached dist
+
+# Step B: Delete the accidental '.githubworkflows' directory
+Remove-Item -Recurse -Force .githubworkflows
+
+# Step C: Add the updated files (.gitignore, vite.config.js, package.json, and .github/workflows/deploy.yml)
+git add .
+
+# Step D: Commit the changes
+git commit -m "Configure GitHub Pages with GitHub Actions"
+
+# Step E: Push the changes to GitHub
+git push origin main
+```
+
+---
+
+### 2. Enable GitHub Actions in GitHub Settings
+
+Now, you must instruct GitHub to build your site using the new GitHub Actions workflow instead of using a branch deployment:
+
+1. Open your repository: [https://github.com/Swatantra2006/techfest-3d](https://github.com/Swatantra2006/techfest-3d)
+2. Click the **Settings** tab.
+3. In the left navigation bar, click on **Pages** (under the *Code and automation* section).
+4. Under **Build and deployment**:
+   * **Source**: Click the dropdown menu and select **GitHub Actions**.
+5. Your deployment is now fully automated! Push your commits to the `main` branch, and the site will build and publish automatically.
+
+---
+
+### 3. Verification
+
+Once the GitHub Action runner finishes:
+* The status will be shown in your repository's **Actions** tab.
+* The final site will be live and functional at:
+  👉 **[https://swatantra2006.github.io/techfest-3d/](https://swatantra2006.github.io/techfest-3d/)**
